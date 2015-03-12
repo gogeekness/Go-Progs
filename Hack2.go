@@ -12,7 +12,7 @@ import (
 
 // Position of Agent in the Room
 type Pos struct {
-	X, Y int 
+	row, col int 
 }
 
 
@@ -33,10 +33,10 @@ type Agent struct {
 	Health int
 	Name string
 	Location Pos
+	Buffblock Block
+	Charblock Block
 	Ouch Weapon
 	Gold int
-	buffer byte //to buffer Playfield on movement	
-	bufcol int  //color of Playfield
 }
 
 // Door
@@ -85,8 +85,8 @@ func IsRoomGood(Buffer [][]Block, Chamber Room) bool{
         //check for Room in incoming room site
 	
 	//chcek for unicode #9608 (block) and #9617 (light shade tile) 
-        for l:= Chamber.Loc.Y-1; l <= (Chamber.Size.Y+Chamber.Loc.Y+1); l++ {
-                for k:= Chamber.Loc.X-1; k <= (Chamber.Size.X+Chamber.Loc.X+1); k++ {
+        for l:= Chamber.Loc.row-1; l <= (Chamber.Size.row+Chamber.Loc.row+1); l++ {
+                for k:= Chamber.Loc.col-1; k <= (Chamber.Size.col+Chamber.Loc.col+1); k++ {
                         if Buffer[l][k].glyph == rune('█') || Buffer[l][k].glyph == rune('░') {
                                 return false
                         }
@@ -94,6 +94,8 @@ func IsRoomGood(Buffer [][]Block, Chamber Room) bool{
         }
 	return true 
 }
+
+
 
 func AddRoom(Buffer [][]Block, Chamber Room){
 	// This func adds a room defined by Room Struct
@@ -105,19 +107,19 @@ func AddRoom(Buffer [][]Block, Chamber Room){
 	 
 	if good { 		
 		// Make Walls 	
-		for l:=0; l < (Chamber.Size.Y+1); l++ {
-			for k:=0; k < (Chamber.Size.X+1); k++ {
-				Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].glyph = rune('█')
-				Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].color = 1
-				Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].blocking = true
+		for l:=0; l < (Chamber.Size.row+1); l++ {
+			for k:=0; k < (Chamber.Size.col+1); k++ {
+				Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].glyph = rune('█')
+				Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].color = 1
+				Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].blocking = true
                		}
             	}
 		// Carve out floor tiles
-                for l:=1; l < (Chamber.Size.Y); l++ {
-                        for k:=1; k < (Chamber.Size.X); k++ {
-                                Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].glyph = rune('░')
-                                Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].color = 3
-				Buffer[Chamber.Loc.Y+l][Chamber.Loc.X+k].blocking = false
+                for l:=1; l < (Chamber.Size.row); l++ {
+                        for k:=1; k < (Chamber.Size.col); k++ {
+                                Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].glyph = rune('░')
+                                Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].color = 3
+				Buffer[Chamber.Loc.row+l][Chamber.Loc.col+k].blocking = false
                         }
                 }
 
@@ -125,6 +127,42 @@ func AddRoom(Buffer [][]Block, Chamber Room){
 	fmt.Printf("End %#v    %b\n", Chamber, good)
 	
 }
+
+
+
+func printagent(Buffer [][]Block, Thing Agent){
+	
+	trow := Thing.Location.row  
+	tcol := Thing.Location.col 
+	
+	//Save the data from the Playfield
+	Thing.Buffblock.glyph = Buffer[trow][tcol].glyph
+	Thing.Buffblock.color = Buffer[trow][tcol].color
+	Thing.Buffblock.blocking = Buffer[trow][tcol].blocking
+
+	//Insert Agent into the Playfield copying over the old tile
+	Buffer[trow][tcol].glyph =  Thing.Charblock.glyph 
+	Buffer[trow][tcol].color =  Thing.Charblock.color
+	Buffer[trow][tcol].blocking =  Thing.Charblock.blocking
+}
+
+
+
+
+func bufferagent(Buffer [][]Block, Thing Agent){
+
+        trow := Thing.Location.row
+        tcol := Thing.Location.col
+
+        //Remove Agent into the Playfield and put back the old tile.
+        Buffer[trow][tcol].glyph =  Thing.Buffblock.glyph
+        Buffer[trow][tcol].color =  Thing.Buffblock.color
+        Buffer[trow][tcol].blocking =  Thing.Buffblock.blocking
+}
+	
+
+
+
 
 /// =============   Display   ===========================
 func display(Buffer [][]Block, usrrow, usrcol *int, scrh, scrw int){
@@ -187,8 +225,8 @@ func main() {
         }
         for i:= range Playfield {
                 for j:= range Playfield[0] {
-                        Playfield[i][j].glyph = rune(' ') 	//Blank
-			Playfield[i][j].color = 0  		//Black
+                        Playfield[i][j].glyph = rune('x') 	//Blank
+			Playfield[i][j].color = 1  		//Black
 			Playfield[i][j].blocking = true
                 }
         }
@@ -197,22 +235,24 @@ func main() {
 		Health: 10 + r.Intn(10),
 		Name: "Richard",
 		Ouch: Weapon{Name: "dagger", Dam: 10},
-		Location: Pos{X: diw,Y: dih},
+		Location: Pos{row: dih,col: diw},
 		Gold: 10,
+		Charblock: Block{glyph: rune('☻'), color: 7, blocking: true},
 		}
 
 	Mon := Agent{
 		Health: 5 + r.Intn(6),
 		Name: "Kolbal",
 		Ouch: Weapon{Name: "fangs", Dam: 5},
-		Location: Pos{X: 1, Y: 2},
+		Location: Pos{1, 2},
+                Charblock: Block{glyph: rune('☸'), color: 4, blocking: true},
 		}
 
 	Chambers := make([]Room, Rooms)
 	
 
 	Chambers[0] = Room {
-		Loc: Pos{diw-5, dih-5},
+		Loc: Pos{dih-5, diw-5},
 		Size: Pos{15, 15},
 		Doors: 3,
 		Creatures: r.Intn(3),
@@ -221,7 +261,7 @@ func main() {
 		}
 	
         Chambers[1] = Room {
-                Loc: Pos{diw+30, dih-5},
+                Loc: Pos{dih+30, diw-5},
                 Size: Pos{5, 5},
                 Doors: 3,
                 Creatures: r.Intn(3),
@@ -230,7 +270,7 @@ func main() {
                 }
 
         Chambers[2] = Room {
-                Loc: Pos{diw-5, dih+20},
+                Loc: Pos{dih-5, diw+20},
                 Size: Pos{10, 10},
                 Doors: 3,
                 Creatures: r.Intn(3),
@@ -283,10 +323,18 @@ func main() {
                         
                 default:
 		}
-		fmt.Printf("Keys  %#v\n", Chambers[0])
-		
+
+		printagent(Playfield, Player)		
+
 		display(Playfield, &dih, &diw, scrh, scrw)
 		fmt.Printf("\x1b[32m")
+
+		bufferagent(Playfield, Player)
+
+		Player.Location.row = dih;
+		Player.Location.col = diw;
+
+
 		fmt.Println("Hieght ",dih, "Width ",diw)
 		fmt.Printf("End %#v\n", Chambers[1])
         	fmt.Printf("%#v\n", Player)
