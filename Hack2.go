@@ -171,26 +171,19 @@ func display(Buffer [][]Block, usrrow, usrcol *int, scrh, scrw int){
         cmd2.Stdout = os.Stdout
         cmd2.Run()
 
-	if *usrrow <= 0+scrh/2 {
-		*usrrow = 0+scrh/2  }
-	if *usrrow > cap(Buffer)-(scrh/2) {
-		*usrrow = cap(Buffer)-(scrh/2) }
-	if *usrcol <= 0+scrw/2 {
-                *usrcol = 0+scrw/2 }
-        if *usrcol > cap(Buffer[0])-(scrh/2) {
-                *usrcol = cap(Buffer[0])-(scrh/2) }
-
 	var row, col int
-	refrow := *usrrow-scrh/2
-	refcol := *usrcol-scrw/2
-	const displaylines = 8 //allow to dispaly info text for the game
+	refrow := *usrrow-scrh
+	refcol := *usrcol-scrw
+	const displaylines = 10 //allow to dispaly info text for the game
 
-	for row=refrow; row<=(refrow+scrh-displaylines); row++ {
-		for col=refcol; col<=(refcol+scrw-1); col++ {
+	//fmt.Println("Player POS H W:", usrrow, usrcol, "refrence h w:", refrow, refcol, "Full size H W:", scrh, scrw, "Window size H W:", refrow+scrh-displaylines, refcol+scrw-1)
+
+	for row=refrow; row<=(refrow+(scrh*2)-displaylines); row++ {
+		for col=refcol; col<=(refcol+(scrw*2)-1); col++ {
 			prtchar:= fmt.Sprintf("\x1b[%dm%s\x1b[1m", 30+Buffer[row][col].color, string(Buffer[row][col].glyph))
 			fmt.Printf("%s", prtchar)
 		}
-		//fmt.Println()
+		fmt.Println()
 	
 	}	
 } 
@@ -210,9 +203,14 @@ func main() {
         scrh, scrw = Screen()
 
 	//center of the dispaly or the Playfield
-	diw := int(scrw/2) 
-	dih := int(scrh/2)
 	
+	diw := new(int)
+	dih := new(int)
+	*diw = (int(scrw/2)) 
+	*dih = (int(scrh/2))
+	halfh := *dih	
+	halfw := *diw
+
 	//Slice for key input
 	var keys []byte = make([]byte, 1)
 
@@ -225,8 +223,8 @@ func main() {
         }
         for i:= range Playfield {
                 for j:= range Playfield[0] {
-                        Playfield[i][j].glyph = rune('x') 	//Blank
-			Playfield[i][j].color = 1  		//Black
+                        Playfield[i][j].glyph = rune(' ') 	//Blank
+			Playfield[i][j].color = 0  		//Black
 			Playfield[i][j].blocking = true
                 }
         }
@@ -235,7 +233,7 @@ func main() {
 		Health: 10 + r.Intn(10),
 		Name: "Richard",
 		Ouch: Weapon{Name: "dagger", Dam: 10},
-		Location: Pos{row: dih,col: diw},
+		Location: Pos{row: *dih,col: *diw},
 		Gold: 10,
 		Charblock: Block{glyph: rune('☻'), color: 7, blocking: true},
 		}
@@ -252,7 +250,7 @@ func main() {
 	
 
 	Chambers[0] = Room {
-		Loc: Pos{dih-5, diw-5},
+		Loc: Pos{*dih-5, *diw-5},
 		Size: Pos{15, 15},
 		Doors: 3,
 		Creatures: r.Intn(3),
@@ -261,7 +259,7 @@ func main() {
 		}
 	
         Chambers[1] = Room {
-                Loc: Pos{dih+30, diw-5},
+                Loc: Pos{*dih+30, *diw-5},
                 Size: Pos{5, 5},
                 Doors: 3,
                 Creatures: r.Intn(3),
@@ -270,7 +268,7 @@ func main() {
                 }
 
         Chambers[2] = Room {
-                Loc: Pos{dih-5, diw+20},
+                Loc: Pos{*dih-5, *diw+20},
                 Size: Pos{10, 10},
                 Doors: 3,
                 Creatures: r.Intn(3),
@@ -300,19 +298,19 @@ func main() {
 
 		switch keys[0] {
                 case byte('a'):  
-                        diw--
+                        *diw--
                         //west player
 	
                 case byte('w'):  
-                      	dih--
+                      	*dih--
                        	//up player
                		
                 case byte('s'): 
-                        dih++
+                        *dih++
                         //up player
                         
                 case byte('d'):  
-                        diw++
+                        *diw++
                         //up player
                         
                 case byte('e'):  
@@ -324,18 +322,27 @@ func main() {
                 default:
 		}
 
+        	if *dih <= scrh/2 {
+	                *dih = halfh  }
+        	if *dih > cap(Playfield)-halfh {
+               		*dih = cap(Playfield)-halfh }
+                if *diw <= halfw {
+                        *diw = halfw  }
+                if *diw > cap(Playfield)-halfw {
+                        *diw = cap(Playfield)-halfw }
+
 		printagent(Playfield, Player)		
 
-		display(Playfield, &dih, &diw, scrh, scrw)
+		display(Playfield, dih, diw, halfh, halfw)
 		fmt.Printf("\x1b[32m")
 
 		bufferagent(Playfield, Player)
 
-		Player.Location.row = dih;
-		Player.Location.col = diw;
+		Player.Location.row = *dih;
+		Player.Location.col = *diw;
 
 
-		fmt.Println("Hieght ",dih, "Width ",diw)
+		fmt.Println("Player POS H W:",*dih,*diw, "half h w:", halfh, halfw, "Full size H W:", scrh, scrw)
 		fmt.Printf("End %#v\n", Chambers[1])
         	fmt.Printf("%#v\n", Player)
         	fmt.Printf("%#v\n", Mon)
